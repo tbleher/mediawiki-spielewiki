@@ -28,7 +28,7 @@ class SpecialNeueSeite extends SpecialSpielBearbeitenBase {
 
 	public function execute( $par ) {
 		global $wgUser, $wgRequest;
-		$this->init( $par );
+		$this->initPars( $par );
 		$this->setHeaders();
 		
 		if ( $this->userCanExecute( $wgUser ) ) {
@@ -40,7 +40,7 @@ class SpecialNeueSeite extends SpecialSpielBearbeitenBase {
 		}
 	}
 
-	function init( $par ) {
+	function initPars( $par ) {
 		global $wgRequest, $wgUser;
 		// initialize vars
 		$this->Preview = $wgRequest->wasPosted();

@@ -326,6 +326,8 @@ HERE;
 				dieser Kommentar wird in der <a href="'.htmlspecialchars($this->Titel->getLocalURL('action=history')).'" target="_blank"
 				>Versionsgeschichte</a> gespeichert)</small></p>';
 		}
+		$out .= '<div class="warningbox"><p style="border:red">Mit dem Speichern dieser Seite versicherst du, dass du den Beitrag selbst verfasst hast bzw. dass er keine fremden Rechte verletzt, und willigst ein, ihn unter der <a href="http://creativecommons.org/licenses/by-sa/3.0/deed.de">Creative Commons Attribution/Share-Alike Lizenz 3.0</a> zu veröffentlichen. Falls du den Text nicht selbst verfasst hast, muss er unter den <a href="/wiki/SpieleWiki:Lizenzbestimmungen">Nutzungsbedingungen</a> verfügbar sein und du stimmst zu, notwendigen Lizenzanforderungen zu folgen. Du stimmst einer Autoren-Nennung mindestens durch URL oder Verweis auf den Artikel zu. <strong>Wenn du nicht möchtest, dass dein Text weiterbearbeitet und weiterverbreitet wird, dann speichere ihn nicht.</strong></p></div>';
+
 		$out .= '<div class="editButtons">';
 		# von EditPage::getEditButtons
 		$buttons = array();
