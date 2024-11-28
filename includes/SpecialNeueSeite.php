@@ -17,7 +17,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
  */
-if (!defined('MEDIAWIKI')) die();
+
+namespace MediaWiki\Extension\NeueSeite;
+
+use ApiMain;
+use MediaWiki\Request\FauxRequest;
 
 class SpecialNeueSeite extends SpecialSpielBearbeitenBase {
 	public function __construct() {
@@ -27,11 +31,11 @@ class SpecialNeueSeite extends SpecialSpielBearbeitenBase {
 	}
 
 	public function execute( $par ) {
-		global $wgUser, $wgRequest;
+		global $wgRequest;
 		$this->initPars( $par );
 		$this->setHeaders();
 		
-		if ( $this->userCanExecute( $wgUser ) ) {
+		if ( $this->userCanExecute( $this->getUser() ) ) {
 			$wgRequest->setVal('action', 'edit');
 			$this->readValues();
 			$this->output( true );
@@ -41,21 +45,21 @@ class SpecialNeueSeite extends SpecialSpielBearbeitenBase {
 	}
 
 	function initPars( $par ) {
-		global $wgRequest, $wgUser;
+		global $wgRequest;
 		// initialize vars
 		$this->Preview = $wgRequest->wasPosted();
 		$par = preg_replace( '/_/', ' ', $par );
 		$this->Spielname = isset( $par ) ? $par : '';
-		$this->sp->Beschreibung = wfMsgNoTrans( 'neueseite-anfangsbeschreibung' );
-		if( $wgUser->isLoggedIn() ) {
-			$this->sp->Autor = $wgUser->getRealName();
+		$this->sp->Beschreibung = $this->msg( 'neueseite-anfangsbeschreibung' )->plain();
+		if( $this->getUser()->isRegistered() ) {
+			$this->sp->Autor = $this->getUser()->getRealName();
 			if ($this->sp->Autor == '')
-				$this->sp->Autor = $wgUser->getName();
+				$this->sp->Autor = $this->getUser()->getName();
 		}
 	}
 
 	function trySave() {
-		global $wgOut, $wgUser, $wgRequest;
+		global $wgOut, $wgRequest;
 		wfDebug( "Trying to save new page (Spezial:Neues Spiel)\n");
 		$this->Titel = $this->createTitleObj( $this->Spielname );
 		if ( is_null( $this->Titel ) )
@@ -68,8 +72,8 @@ class SpecialNeueSeite extends SpecialSpielBearbeitenBase {
 			'text'       => $text,
 			'createonly' => 1,
 		), true);
-		$req->setVal( 'token', $wgUser->editToken( '', $req ) );
-		#$req->setVal( 'token', $wgUser->getEditToken() );
+		$req->setVal( 'token', $this->getUser()->getEditToken( '', $req ) );
+		#$req->setVal( 'token', $this->getUser()->getEditToken() );
 		$captchaid = $wgRequest->getVal( 'recaptcha_challenge_field', $wgRequest->getVal( 'wpCaptchaId' ) );
                 $req->setVal( 'wpCaptchaId', $captchid );
                 $req->setVal( 'captchaid', $captchid );
@@ -82,7 +86,7 @@ class SpecialNeueSeite extends SpecialSpielBearbeitenBase {
 		$api->execute();
 		wfDebug("Completed API-Save\n");
 		// we only reach this point if Api doesn't throw an exception
-		$data = $api->getResultData();
+		$data = $api->getResult()->getResultData();
 		return $data;
 	}
 }

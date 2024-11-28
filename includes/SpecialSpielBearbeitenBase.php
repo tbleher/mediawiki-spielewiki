@@ -17,9 +17,21 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
  */
-if (!defined('MEDIAWIKI')) die();
 
-abstract class SpecialSpielBearbeitenBase extends SpecialPage {
+namespace MediaWiki\Extension\NeueSeite;
+
+use Article;
+use Html;
+use Linker;
+use MediaWiki\MediaWikiServices;
+use ParserOptions;
+use Skin;
+use Title;
+use Xml;
+use MediaWiki\StubObject\StubGlobalUser;
+use WikitextContent;
+
+abstract class SpecialSpielBearbeitenBase extends \SpecialPage {
 	protected $Titel;
 
 	public function __construct( $pagename, $restriction ) {
@@ -37,6 +49,15 @@ abstract class SpecialSpielBearbeitenBase extends SpecialPage {
 		if( is_null( $title ) || $title->getNamespace() == NS_SPECIAL )
 			return NULL;
 		return $title;
+	}
+
+	function getTitleFromSpielname() {
+		return $this->createTitleObj($this->Spielname ? $this->Spielname : "Neues Spiel" );
+	}
+
+	# Mimics EditPage, for hook EditPageBeforeEditButtons
+	public function getArticle() {
+		return Article::newFromTitle( $this->getTitleFromSpielname(), $this->getContext() );
 	}
 
 	function readValues() {
@@ -89,11 +110,11 @@ abstract class SpecialSpielBearbeitenBase extends SpecialPage {
 	 * Filename must be valid!
 	 */
 	private function thumblink( $file ){
-		$title = Title::makeTitle( NS_IMAGE, $file );
+		$title = Title::makeTitle( NS_FILE, $file );
 		if( !is_object( $title ) ) {
 			return "<span class='error'>ERROR in __METHOD__!\n</span>"; // This shouldn't happen
 		}
-		$image = wfFindFile( $title );
+		$image = MediaWikiServices::getInstance()->getRepoGroup()->findFile( $title );
 		if( isset( $image ) && is_object( $image ) && $image->exists() ) {
 			$thumbnail = $image->transform( array( 'width' => 16 ) );
                 	return $thumbnail->toHtml( array( 'alt' => '', 'file-link' => false, 'valign' => 'top' ) ) . ' ';
@@ -111,8 +132,9 @@ abstract class SpecialSpielBearbeitenBase extends SpecialPage {
 		$sp = $this->sp;
 
 		// Hack, damit in der erweiterten Toolbar der Usability-Initiative die richtigen Icons angezeigt werden
-		$wgOut->includeJQuery();
-		$wgOut->addScript( "<script type='text/javascript'>jQuery(document).ready(function(){jQuery( 'body' ).addClass('ns-subject').addClass('ns-0');});</script>");
+		// TODO Wird das noch benötigt?
+		#$wgOut->includeJQuery();
+		#$wgOut->addScript( "<script type='text/javascript'>jQuery(document).ready(function(){jQuery( 'body' ).addClass('ns-subject').addClass('ns-0');});</script>");
 
 		if( $this->Save ){
 			try {
@@ -156,11 +178,12 @@ abstract class SpecialSpielBearbeitenBase extends SpecialPage {
 		}
 
 		if( $newpage ){
-			$wgOut->setPageTitle(wfMsg( 'neueseite-titel' ) . ($this->Spielname != '' ? ' - '.$this->Spielname : ''));
+			$wgOut->setPageTitle($this->msg( 'neueseite-titel' )->text() . ($this->Spielname != '' ? ' - '.$this->Spielname : ''));
 		} else {
-			$wgOut->setPageTitle( wfMsg( 'editing', $this->Titel->getPrefixedText() ) );
+			# TODO kommt der richtige Titel raus (nach dem Update)?
+			$wgOut->setPageTitle( $this->msg( 'editing', $this->Titel->getPrefixedText() )->text() );
 		}
-		$postURL = htmlspecialchars( SpecialPage::getTitleFor( $this->mName, $newpage ? NULL : $this->Spielname )->getFullURL() );
+		$postURL = htmlspecialchars( \SpecialPage::getTitleFor( $this->mName, $newpage ? NULL : $this->Spielname )->getFullURL() );
 		$wgOut->addHTML( "<form id='editform' name='editform' method='post' action=\"$postURL\" enctype='multipart/form-data'>" );
 
 		// TODO: preview-reason muss noch angepasst werden	
@@ -170,7 +193,7 @@ abstract class SpecialSpielBearbeitenBase extends SpecialPage {
 				// this should not happen, but does anyway if ApiMain throws an exception
 				$wgTitle = $this->getTitle();
 			}
-			$previewhead = '<h2>' . htmlspecialchars( wfMsg( 'preview' ) ) . "</h2>\n";
+			$previewhead = '<h2>' . htmlspecialchars( $this->msg( 'preview' )->text() ) . "</h2>\n";
 			if ($this->PreviewReason != '') {
 				if( $this->PreviewReason === 'NeedsCaptcha' ) {
 					ConfirmEditHooks::getInstance()->editCallback( $wgOut );
@@ -184,21 +207,45 @@ abstract class SpecialSpielBearbeitenBase extends SpecialPage {
 				}
 			} else {
 				$previewhead .= "<div class='previewnote'>";
-				$previewhead .= $wgOut->parse( wfMsg( ($this->Save ? 'articleexists' : 'previewnote') ) );
+				$previewhead .= $wgOut->parseAsInterface( $this->msg( ($this->Save ? 'articleexists' : 'previewnote') )->text() );
 				$previewhead .= "</div>\n";
 			}
-			$wgOut->parserOptions()->setEditSection( false );
 			$wgOut->addHTML( "<div id='wikiPreview'>$previewhead\n" );
-			$wgOut->addWikiText( $sp->createWikiText() );
+
+			$services = MediaWikiServices::getInstance();
+			$title = $this->getTitleFromSpielname();
+			//$wikiPageFactory = $services->getWikiPageFactory();
+			//$page = $wikiPageFactory->newFromTitle( $title );
+			//$parserOptions = $page->makeParserOptions( $this->context );
+			$user = StubGlobalUser::getRealUser($wgUser);
+			$parserOptions = new ParserOptions($user);
+			$parserOptions->setRenderReason( 'page-preview' );
+			$parserOptions->setIsPreview( true );
+			$parserOptions->setIsSectionPreview( false );
+			$content = new WikitextContent($sp->createWikiText());
+
+			$contentTransformer = $services->getContentTransformer();
+			$pstContent = $contentTransformer->preSaveTransform( $content, $title, $user, $parserOptions );
+			$contentRenderer = $services->getContentRenderer();
+			$parserOutput = $contentRenderer->getParserOutput( $pstContent, $title, null, $parserOptions );
+			$skin = $wgOut->getSkin();
+			$skinOptions = $skin->getOptions();
+			$wgOut->addHTML( $parserOutput->getText( [
+				'userLang' => $skin->getLanguage(),
+				'injectTOC' => $skinOptions['toc'],
+				'enableSectionEditLinks' => false,
+				'includeDebugInfo' => true,
+			] ) );
+	
 			$wgOut->addHTML( "<br style='clear:both;' />\n</div><hr />\n" );
 		}
 
-		$toolbar = $wgUser->getOption('showtoolbar') ? EditPage::getEditToolbar() : '';
+		$toolbar = $this->getUser()->getOption('showtoolbar') ? EditPage::getEditToolbar() : '';
 		//$wgOut->addScriptFile( 'edit.js' );
 		$wgOut->addModules("ext.wikiEditor.toolbar");
 		$wgOut->addModules("ext.wikiEditor.dialogs");
 
-		$wgOut->addWikiText( wfMsg( $newpage ? 'neueseite-einleitung' : 'spielbearbeiten-einleitung' ) );
+		$wgOut->addWikiTextAsInterface( $this->msg( $newpage ? 'neueseite-einleitung' : 'spielbearbeiten-einleitung' )->text() );
 		$out = <<<HERE
 			<table border="0" cellpadding="5" cellspacing="0">
 			<tbody>
@@ -238,7 +285,7 @@ HERE;
 			Xml::input( 'wpNLT', 3, $sp->NLT ) );
 
 		$out .= $this->tableRow( 'Zusätzliche Infos zur Gruppengröße:', 
-			Xml::tags( 'textarea', array( 'id' => 'wpGruppeAfter', 'name' => 'wpGruppeAfter', 'rows' => 2, cols => '80' ), 
+			Xml::tags( 'textarea', array( 'id' => 'wpGruppeAfter', 'name' => 'wpGruppeAfter', 'rows' => 2, 'cols' => '80' ), 
 				htmlspecialchars( $sp->Gruppe_after ) ) . "<!-- Dieses Feld kann meistens leer bleiben. -->" );
 
 		$out .= $this->tableRow( $this->thumblink('Clock.png') . 'Vorbereitungsaufwand:',
@@ -337,8 +384,8 @@ HERE;
 			'type'      => 'submit',
 		#	'tabindex'  => ++$tabindex,
 			'value'     => 'Spiel speichern', # wfMsg('savearticle'),
-			'accesskey' => wfMsg('accesskey-save'),
-			'title'     => ($newpage ? 'Neues Spiel erstellen' : wfMsg( 'tooltip-save' ) ).' ['.wfMsg( 'accesskey-save' ).']',
+			'accesskey' => $this->msg('accesskey-save')->text(),
+			'title'     => ($newpage ? 'Neues Spiel erstellen' : $this->msg( 'tooltip-save' )->text() ).' ['.$this->msg( 'accesskey-save' )->text().']',
                 );
 		$buttons['save'] = Xml::element('input', $temp, '');
 		$temp = array(
@@ -346,9 +393,9 @@ HERE;
 			'name'      => 'wpPreview',
 			'type'      => 'submit',
 		#	'tabindex'  => $tabindex,
-			'value'     => wfMsg('showpreview'),
-			'accesskey' => wfMsg('accesskey-preview'),
-			'title'     => wfMsg( 'tooltip-preview' ).' ['.wfMsg( 'accesskey-preview' ).']',
+			'value'     => $this->msg('showpreview')->text(),
+			'accesskey' => $this->msg('accesskey-preview')->text(),
+			'title'     => $this->msg( 'tooltip-preview' )->text().' ['.$this->msg( 'accesskey-preview' )->text().']',
 		);
 		$buttons['preview'] = Xml::element('input', $temp, '');
 
@@ -358,27 +405,27 @@ HERE;
 				'name'      => 'wpDiff',
 				'type'      => 'submit',
 			#	'tabindex'  => ++$tabindex,
-				'value'     => wfMsg('showdiff'),
-				'accesskey' => wfMsg('accesskey-diff'),
-				'title'     => wfMsg( 'tooltip-diff' ).' ['.wfMsg( 'accesskey-diff' ).']',
+				'value'     => $this->msg('showdiff')->text(),
+				'accesskey' => $this->msg('accesskey-diff')->text(),
+				'title'     => $this->msg( 'tooltip-diff' )->text().' ['.$this->msg( 'accesskey-diff' )->text().']',
 			);
 			$buttons['diff'] = Xml::element('input', $temp, '');
 		}
 
 		$tabindex = 0;
 		# WARNING: This will break if any extension needs $editpage in this hook!
-		wfRunHooks( 'EditPageBeforeEditButtons', array( NULL, &$buttons, &$tabindex ) );
-		$out .= implode( $buttons, "\n" );
+		$this->getHookRunner()->onEditPageBeforeEditButtons( $this, $buttons, $tabindex );
+		$out .= implode( "\n", $buttons );
 		$out .= Html::hidden( "wpEditToken", $wgUser->getEditToken() );
 
-		$sk = $wgUser->getSkin();
+		$sk = $this->getSkin();
 		$canceltitle = $newpage ? Title::newMainPage() : $this->Titel;
 		$cancel = Linker::linkKnown( $canceltitle,
-                                wfMsgExt('cancel', array('parseinline')) );
-		$edithelpurl = Skin::makeInternalOrExternalUrl( wfMsgForContent( 'edithelppage' ));
+                                $this->msg('cancel')->parse() );
+		$edithelpurl = Skin::makeInternalOrExternalUrl( $this->msg( 'edithelppage' )->inContentLanguage()->text() );
 		$edithelp = '<a target="helpwindow" href="'.$edithelpurl.'">'.
-			htmlspecialchars( wfMsg( 'edithelp' ) ).'</a> '.
-			htmlspecialchars( wfMsg( 'newwindow' ) );
+			htmlspecialchars( $this->msg( 'edithelp' )->text() ).'</a> '.
+			htmlspecialchars( $this->msg( 'newwindow' )->text() );
 		$normaledit = $newpage ? '' : ' | <a href="'.htmlspecialchars($this->Titel->getLocalURL('action=edit')).'">Spiel als Ganzes bearbeiten (ohne Formular)</a>';
         	$out .= " <span class='editHelp'>{$cancel} | {$edithelp}{$normaledit}</span></div></form>";
 

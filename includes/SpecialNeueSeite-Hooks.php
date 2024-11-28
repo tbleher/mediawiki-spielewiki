@@ -19,13 +19,8 @@
  */
 if (!defined('MEDIAWIKI')) die();
 
-$wgExtensionCredits['specialpage'][] = array(
-        'name' => 'Neue Seite',
-	'author' => 'Leonhard Klein, Thomas Bleher',
-	'url' => 'http://spiele.j-crew.de/wiki/Spezial:Neues_Spiel',
-	'description' => 'Eine Spezialseite, um einfach eine neue Seite im Wiki zu erstellen',
-);
-
+# TODO all das verschieben
+#
 $wgAutoloadClasses['SpecialNeueSeite'] = dirname( __FILE__ ) . '/SpecialNeueSeite_body.php';
 $wgAutoloadClasses['SpieleParser'] = dirname( __FILE__ ) . '/SpieleParser.php';
 $wgAutoloadClasses['SpecialSpielBearbeiten'] = dirname( __FILE__ ) . '/SpecialSpielBearbeiten_body.php';
@@ -34,21 +29,7 @@ $wgSpecialPages['NeueSeite'] = 'SpecialNeueSeite';
 $wgSpecialPages['SpielBearbeiten'] = 'SpecialSpielBearbeiten';
 $wgExtensionMessagesFiles['NeueSeite'] = dirname( __FILE__ ) . '/SpecialNeueSeite.i18n.php';
 $wgExtensionMessagesFiles['SpielBearbeiten'] = dirname( __FILE__ ) . '/SpecialNeueSeite.i18n.php';
-$wgHooks['LanguageGetSpecialPageAliases'][] = 'wfExtensionSpecialNeueSeiteLocalizedPageName';
  
-function wfExtensionSpecialNeueSeiteLocalizedPageName(&$specialPageArray, $code) {
-	$text = wfMsg('neueseite-name');
-	$title = Title::newFromText($text);
-	$specialPageArray['NeueSeite'][] = 'NeueSeite';
-	$specialPageArray['NeueSeite'][] = $title->getDBKey();
-
-	$text = wfMsg('spielbearbeiten-name');
-	$title = Title::newFromText($text);
-	$specialPageArray['SpielBearbeiten'][] = 'SpielBearbeiten';
-	$specialPageArray['SpielBearbeiten'][] = $title->getDBKey();
-	return true;
-}
-
 $wgHooks['AlternateEdit'][] = 'wfAddHelpOnEditPage';
 function wfAddHelpOnEditPage( $editpage ) {
 	global $wgHooks;
@@ -64,21 +45,6 @@ function wfExtensionAddEditHelp( $skin ){
 	echo '<div class="pBody"><b>Bearbeitungstipps:</b><br/>Du kannst den Text einfach mit 
 		<a href="http://spiele.j-crew.de/wiki/SpieleWiki:Editierhilfe" target="_blank">Wikisyntax</a> formatieren. Zum Beispiel:<ul><li>\'\'kursiv\'\' =&gt; <i>kursiv</i></li><li>\'\'\'fett\'\'\' =&gt; <b>fett</b></li></ul> 
 		<a href="http://spiele.j-crew.de/wiki/SpieleWiki:Editierhilfe" target="_blank">Mehr Infos</a><ul style="display:none">'."\n";
-	return true;
-}
-
-$wgHooks['SkinTemplateNavigation'][] = 'wfAlterEditPageLinkHook';
-function wfAlterEditPageLinkHook( &$sktemplate, &$links ) {
-	$context = $sktemplate->getContext();
-	$title = $context->getTitle();
-	$article = Article::newFromTitle( $title, $context );
-	if( array_key_exists( 'edit', $links['views'] ) && $title->isContentPage() && $article->isCurrent() ){
-		if( $title->exists() ) {
-			$links['views']['edit']['href'] = Title::newFromText( 'Spezial:Spiel_bearbeiten/'. $title->getPrefixedDBkey() )->getLocalUrl();
-		} else {
-			$links['views']['edit']['href'] = Title::newFromText( 'Spezial:Neues_Spiel/'. $title->getPrefixedDBkey() )->getLocalUrl();
-		}
-	}
 	return true;
 }
 

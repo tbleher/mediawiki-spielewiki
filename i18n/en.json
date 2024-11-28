@@ -1,0 +1,17 @@
+{
+	"@metadata": {
+		"authors": []
+	},
+	"neueseite-desc": "Eine Spezialseite, um einfach eine neue Seite im Wiki zu erstellen",
+	"neueseite": "Neues Spiel",
+	"neueseite-name": "Neues Spiel",
+	"neueseite-titel": "Neues Spiel erstellen",
+	"neueseite-einleitung": "Hier kannst du deine Spieldaten eingeben. Bei einem Klick auf Speichern wird automatisch eine neue \"wiki\"-Seite erstellt und dein Spiel eingetragen.",
+	"neueseite-material-ueberschrift": "== [[bild:utilities.png|<nowiki/>]] Material ==",
+	"neueseite-grundgeruest": "== [[bild:info.png|<nowiki/>]] Kurzbeschreibung ==\n{{Kurzbeschreibung|<<Kurzbeschreibung>>}}\n\n{{Vorbereitungsaufwand|<<Aufwand>>}}{{Dauer|<<Dauer>>}}\n== [[bild:personen.png|<nowiki/>]] Gruppengrößen ==\n{{Personenzahl|minLeiter=<<MinLeiter>>|minTeilnehmer=<<MinTeilnehmer>>|maxTeilnehmer=<<MaxTeilnehmer>>}}\n\n== [[bild:buch.png|<nowiki/>]] Inhalt ==\n<<Beschreibung>>\n<<Material>>\n{{<<Autortemplate>>|<<Autor>>}}\n",
+        "neueseite-anfangsbeschreibung": "=== Geschichte ===\nLorem ipsum dolor sit amet, consectetuer adipiscing elit. Phasellus\nquis nulla. Praesent imperdiet blandit ipsum.\n\n=== Anspiel ===\nHier kannst du ein evtl. Anspiel einbauen.\n\n=== Spiele / Ablauf ===\n* erstes Spiel\n\n=== Spielende ===\nNur zur Erinnerung: Ein festdefiniertes Spielende macht sich meistens\ngut...",
+	"spielbearbeiten": "Spiel bearbeiten",
+	"spielbearbeiten-name": "Spiel bearbeiten",
+	"spielbearbeiten-einleitung": ""
+}
+

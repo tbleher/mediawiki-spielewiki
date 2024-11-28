@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
  */
-if (!defined('MEDIAWIKI')) die();
+namespace MediaWiki\Extension\NeueSeite;
 /*
 TODO:
 	Vorlage:Zeitaufwand
@@ -134,7 +134,7 @@ class SpieleParser {
 		$autor = ($autorzahl > 2) ? 'Autoren' : 'Autor';
 
 		if (preg_match("/[^\\s*]/", $this->Material) > 0) { // Material besteht nicht nur aus Leerzeichen und Sternen...
-			$material = wfMsg( 'neueseite-material-ueberschrift' ). "\n" . $this->Material;
+			$material = wfMessage( 'neueseite-material-ueberschrift' )->text(). "\n" . $this->Material;
 		} else {
 			$material = '';
 		}

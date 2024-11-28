@@ -1,0 +1,41 @@
+{
+	"name": "NeueSeite",
+	"version": "0.2.0",
+	"author": [
+		"Leonhard Klein",
+		"Thomas Bleher"
+	],
+	"url": "http://spiele.j-crew.de/wiki/Spezial:Neues_Spiel",
+	"license-name": "GPL-2.0-or-later",
+	"descriptionmsg": "neueseite-desc",
+	"type": "specialpage",
+	"requires": {
+		"MediaWiki": ">= 1.40.0"
+	},
+	"ExtensionMessagesFiles": {
+		"NeueSeiteAlias": "NeueSeite.i18n.alias.php"
+	},
+	"MessagesDirs": {
+		"NeueSeite": [
+			"i18n"
+		]
+	},
+	"SpecialPages": {
+		"NeueSeite": {
+			"class": "MediaWiki\\Extension\\NeueSeite\\SpecialNeueSeite"
+		},
+		"SpielBearbeiten": {
+			"class": "MediaWiki\\Extension\\NeueSeite\\SpecialSpielBearbeiten"
+		}
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\NeueSeite\\": "includes/"
+	},
+	"Hooks": {
+		"SkinTemplateNavigation::Universal": "MediaWiki\\Extension\\NeueSeite\\Hooks::onSkinTemplateNavigation"
+	},
+	"manifest_version": 2
+
+}
+
+

@@ -17,7 +17,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
  */
-if (!defined('MEDIAWIKI')) die();
+
+namespace MediaWiki\Extension\NeueSeite;
+
+use ApiMain;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Request\FauxRequest;
+use MediaWiki\Revision\RevisionLookup;
+use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\Revision\SlotRecord;
+use ContentHandler;
+use DifferenceEngine;
+
 /*
 TODO
 	Handling, falls man alte Versionen einer Seite bearbeitet!
@@ -31,7 +42,7 @@ class SpecialSpielBearbeiten extends SpecialSpielBearbeitenBase {
 	}
 
 	public function execute( $par ) {
-		global $wgUser, $wgRequest, $wgOut;
+		global $wgRequest, $wgOut;
 		$this->Titel = $this->createTitleObj( $par );
 		if( is_null( $this->Titel ) ) {
 			$wgOut->addHTML("Nothing to see here, move along!");
@@ -42,13 +53,14 @@ class SpecialSpielBearbeiten extends SpecialSpielBearbeitenBase {
 			$wgOut->redirect( $t->getFullURL() );
 			return;
 		}
-		if( !$this->Titel->userCan( 'edit' ) ) {
+		$permManager = MediaWikiServices::getInstance()->getPermissionManager();
+		if( !$permManager->userCan('edit', $this->getUser(), $this->Titel) ) {
 			// Wenn der Benutzer die Seite nicht bearbeiten kann schicken wir ihn zur normalen Edit-Seite;
 			// dort bekommt er den Grund + den Quelltext angezeigt
 			$wgOut->redirect( $this->Titel->getEditURL() );
 			return;
 		}
-		if ( !$this->userCanExecute( $wgUser ) ) {
+		if ( !$this->userCanExecute( $this->getUser() ) ) {
 			$this->displayRestrictionError();
 			return;
 		}
@@ -59,8 +71,10 @@ class SpecialSpielBearbeiten extends SpecialSpielBearbeitenBase {
 		if ( $wgRequest->wasPosted() ) {
 			$this->readValues();
 		} else {
-			$rev = Revision::newFromTitle( $this->Titel );
-			$text = $rev->getText();
+			$revisionLookup = MediaWikiServices::getInstance()->getRevisionLookup();
+			$rev = $revisionLookup->getRevisionByTitle( $this->Titel );
+			$content = $rev->getContent(SlotRecord::MAIN, RevisionRecord::FOR_THIS_USER, $this->getUser());
+			$text = ContentHandler::getContentText($content);
 			$rv = $this->sp->parsePage( $text );
 			if( !$rv ) {
 				$wgOut->redirect( $this->Titel->getEditURL() );
@@ -81,12 +95,16 @@ class SpecialSpielBearbeiten extends SpecialSpielBearbeitenBase {
 //                $newtext = $this->mArticle->preSaveTransform( $newtext );
 		$de = new DifferenceEngine( $this->Titel );
 		if( is_null( $this->sp->OriginalText ) ) {
-			$rev = Revision::newFromTitle( $this->Titel );
-			$this->sp->OriginalText = $rev->getText();
+			$revisionLookup = MediaWikiServices::getInstance()->getRevisionLookup();
+			$rev = $revisionLookup->getRevisionByTitle( $this->Titel );
+			$content = $rev->getContent(SlotRecord::MAIN, RevisionRecord::FOR_THIS_USER, $this->getUser());
+			$this->sp->OriginalText = ContentHandler::getContentText($content);
 		}
-		$de->setText( $this->sp->OriginalText, $newtext );
-                $oldtitle = wfMsgExt( 'currentrev', array('parseinline') );
-                $newtitle = wfMsgExt( 'yourtext', array('parseinline') );
+		$oldContent = ContentHandler::makeContent( $this->sp->OriginalText, $this->Titel );
+		$newContent = ContentHandler::makeContent( $newtext, $this->Titel );
+		$de->setContent( $oldContent, $newContent );
+		$oldtitle = wfMessage( 'currentrev' )->parse();
+		$newtitle = wfMessage( 'yourtext' )->parse();
 		$difftext = $de->getDiff( $oldtitle, $newtitle );
 		$de->showDiffStyle();
 
@@ -94,7 +112,7 @@ class SpecialSpielBearbeiten extends SpecialSpielBearbeitenBase {
 	}
 
 	function trySave() {
-		global $wgOut, $wgUser, $wgRequest;
+		global $wgOut, $wgRequest;
 		if ( !$this->Titel->exists() )
 			return false;
 		$text = $this->sp->createWikiText();
@@ -105,7 +123,7 @@ class SpecialSpielBearbeiten extends SpecialSpielBearbeitenBase {
 			'text'    => $text,
 			'summary' => $this->EditSummary
 		), true);
-		$req->setVal( 'token', $wgUser->editToken( '', $req ) );
+		$req->setVal( 'token', $this->getUser()->getEditToken( '', $req ) );
 		#$req->setVal( 'token', $wgUser->getEditToken() );
 		$captchaid = $wgRequest->getVal( 'recaptcha_challenge_field', $wgRequest->getVal( 'wpCaptchaId' ) );
                 $req->setVal( 'wpCaptchaId', $captchid );
@@ -119,6 +137,6 @@ class SpecialSpielBearbeiten extends SpecialSpielBearbeitenBase {
 		$api->execute();
 		wfDebug("Completed API-Save\n");
 		// we only reach this point if Api doesn't throw an exception
-		return $api->getResultData();
+		return $api->getResult()->getResultData();
 	}
 }
